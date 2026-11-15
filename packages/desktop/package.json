@@ -1,12 +1,14 @@
 {
   "name": "desktop",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Sentry Log Explorer - Desktop Application (Tauri)",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "tauri": "tauri",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build",
+    "tauri:icon": "tauri icon"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC"
+  "devDependencies": {
+    "@tauri-apps/cli": "^2"
+  }
 }
