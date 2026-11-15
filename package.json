@@ -1,0 +1,18 @@
+{
+  "name": "sentry-log-explorer",
+  "version": "1.0.0",
+  "description": "A modular, high-performance log explorer with a shared TypeScript core, delivering instant analysis of multi-gigabyte logs via a VS Code plugin, desktop app, and extensible API.",
+  "private": true,
+  "workspaces": [
+    "packages/core",
+    "packages/ui",
+    "packages/desktop",
+    "packages/plugin"
+  ],
+  "scripts": {
+    "test": "npm run test --workspaces --if-present"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}
