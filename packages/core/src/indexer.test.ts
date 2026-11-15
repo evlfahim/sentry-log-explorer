@@ -3,7 +3,7 @@ import fs from 'fs';
 import path from 'path';
 
 describe('FileIndexer', () => {
-  const testDir = path.join(__dirname, '__test_files__');
+  const testDir = path.join(__dirname, '__test_files_indexer__');
   let testFile: string;
 
   beforeAll(() => {

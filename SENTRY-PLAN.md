@@ -28,7 +28,7 @@ Core library exports a clean API; VS Code extension consumes core via Webview, s
 ## Steps
 - [x] 1. Initialize monorepo structure with core, UI, desktop, and plugin packages. `mkdir -p packages/{core,ui,desktop,plugin} && npm init -y`
 - [x] 2. Implement file indexer using `fs.createReadStream` and byte-offset caching for instant open. `cd packages/core && npm test -- --grep "indexer"`
-- [ ] 3. Add log parser to extract levels and timestamps from raw lines. `cd packages/core && npm test -- --grep "parser"`
+- [x] 3. Add log parser to extract levels and timestamps from raw lines. `cd packages/core && npm test -- --grep "parser"`
 - [ ] 4. Build filter engine supporting level, time range, and regex matching. `cd packages/core && npm test -- --grep "filter"`
 - [ ] 5. Implement pattern highlighter with configurable regex groups and colors. `cd packages/core && npm test -- --grep "highlight"`
 - [ ] 6. Develop follow mode logic with tail-fallback and pause state. `cd packages/core && npm test -- --grep "follow"`
