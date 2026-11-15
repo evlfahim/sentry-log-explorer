@@ -38,7 +38,7 @@ Core library exports a clean API; VS Code extension consumes core via Webview, s
 - [!] 10. Implement the LogList component with virtual scrolling support in packages/ui/src/components/LogList.tsx and add a unit test that verifies it renders a list of LogRow components.
 - [x] 11. Integrate FileOpenDialog and LogList into the main App component in packages/ui/src/App.tsx and add an integration test that verifies the file open dialog triggers the log list rendering.
 - [x] 12. Implement filter bar with level toggles and time picker. `cd packages/ui && npm run test -- --grep "filters"`
-- [ ] 13. Integrate pattern highlighter into log rows. `cd packages/ui && npm run test -- --grep "highlight-ui"`
+- [x] 13. Integrate pattern highlighter into log rows. `cd packages/ui && npm run test -- --grep "highlight-ui"`
 - [ ] 14. Add saved queries panel with load and export actions. `cd packages/ui && npm run test -- --grep "queries-ui"`
 - [ ] 15. Wire follow mode toggle and auto-scroll behavior. `cd packages/ui && npm run test -- --grep "follow-ui"`
 - [ ] 16. Wrap UI in Tauri for standalone desktop application. `cd packages/desktop && npm run tauri dev && pgrep -f tauri`
