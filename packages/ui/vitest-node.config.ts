@@ -11,10 +11,13 @@ export default defineConfig({
   },
   test: {
     globals: true,
-    environment: 'jsdom',
+    environment: 'node',
     watch: false,
     testTimeout: 15000,
-    include: ['src/App.test.tsx'],
+    hookTimeout: 15000,
+    teardownTimeout: 5000,
+    include: ['src/App.node.test.tsx'],
+    exclude: ['node_modules', 'dist', '.idea', '.git', '.cache'],
     pool: 'forks',
     poolOptions: {
       forks: {
