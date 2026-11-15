@@ -40,3 +40,12 @@ export type {
   FollowCallbacks,
   FollowOptions,
 } from './follow';
+
+export {
+  SavedQueriesManager,
+} from './queries';
+export type {
+  SavedQuery,
+  SavedQueriesManagerOptions,
+  QueryFilterOptions,
+} from './queries';
