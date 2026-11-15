@@ -6,10 +6,12 @@ import type { HighlightPattern } from 'core';
 
 const ROW_HEIGHT = 24;
 const BUFFER_SIZE = 20;
+const DEFAULT_VIEWPORT_HEIGHT = 600;
 
 interface LogListProps {
   lines: ParsedLogLine[];
   rawLines: string[];
+  fileLoaded: boolean;
   highlightPatterns: HighlightPattern[];
   followMode: boolean;
   followPaused: boolean;
@@ -19,6 +21,7 @@ interface LogListProps {
 export function LogList({
   lines,
   rawLines,
+  fileLoaded,
   highlightPatterns,
   followMode,
   followPaused,
@@ -44,18 +47,24 @@ export function LogList({
     }
   }, [lines.length, followMode, followPaused]);
 
+  // Jump back to the top when a different data set is loaded
+  useEffect(() => {
+    setScrollTop(0);
+    if (containerRef.current) containerRef.current.scrollTop = 0;
+  }, [rawLines]);
+
   const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
     setScrollTop(e.currentTarget.scrollTop);
   }, []);
 
   const totalHeight = lines.length * ROW_HEIGHT;
-  const viewportHeight = containerRef.current?.clientHeight || 600;
+  const viewportHeight = containerRef.current?.clientHeight || DEFAULT_VIEWPORT_HEIGHT;
   const startIndex = Math.max(0, Math.floor(scrollTop / ROW_HEIGHT) - BUFFER_SIZE);
   const endIndex = Math.min(
     lines.length,
     Math.ceil((scrollTop + viewportHeight) / ROW_HEIGHT) + BUFFER_SIZE
   );
-  const visibleLines = lines.slice(startIndex, endIndex);
+  const visibleLines = useMemo(() => lines.slice(startIndex, endIndex), [lines, startIndex, endIndex]);
   const offsetY = startIndex * ROW_HEIGHT;
 
   // Pre-compute highlight results for visible lines
@@ -63,10 +72,10 @@ export function LogList({
   const highlightResults = useMemo(() => {
     if (highlightPatterns.length === 0) return null;
     highlighterRef.current.setPatterns(highlightPatterns);
-    return highlighterRef.current.highlightLines(visibleLines.map((l) => l.rawLine));
+    return highlighterRef.current.highlightLines(visibleLines.map((l) => l.message));
   }, [visibleLines, highlightPatterns]);
 
-  if (rawLines.length === 0) {
+  if (!fileLoaded) {
     return (
       <div className="log-list-empty">
         <p>No log file loaded. Click "Open File" to get started.</p>
@@ -78,19 +87,20 @@ export function LogList({
     <div className="log-list-container" ref={containerRef} onScroll={handleScroll}>
       <div className="log-list-viewport" style={{ height: totalHeight }}>
         <div style={{ transform: `translateY(${offsetY}px)` }}>
-          {visibleLines.map((line, i) => {
-            const result = highlightResults?.[i] ?? null;
-            return (
-              <LogRow
-                key={startIndex + i}
-                line={line}
-                index={startIndex + i}
-                highlightResult={result}
-              />
-            );
-          })}
+          {visibleLines.map((line, i) => (
+            <LogRow
+              key={line.lineNumber}
+              line={line}
+              highlightResult={highlightResults?.[i] ?? null}
+            />
+          ))}
         </div>
       </div>
+      {lines.length === 0 && (
+        <div className="log-list-no-lines">
+          {rawLines.length === 0 ? 'File is empty.' : 'No lines match the current filters.'}
+        </div>
+      )}
       <div className="log-list-footer">
         Showing {lines.length} of {rawLines.length} lines
       </div>

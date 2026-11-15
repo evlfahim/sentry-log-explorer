@@ -5,59 +5,54 @@ import type { HighlightResult } from 'core';
 
 interface LogRowProps {
   line: ParsedLogLine;
-  index: number;
   highlightResult: HighlightResult | null;
 }
 
-function escapeHtml(text: string): string {
-  return text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;');
-}
+export function LogRow({ line, highlightResult }: LogRowProps) {
+  const hasLevel = Boolean(line.level) && line.level !== 'UNKNOWN';
 
-export function LogRow({ line, index, highlightResult }: LogRowProps) {
   const levelColor = useMemo(() => {
-    if (line.level && line.level !== 'UNKNOWN') {
+    if (hasLevel) {
       return PatternHighlighter.getLevelColor(line.level).color;
     }
     return '#333333';
-  }, [line.level]);
+  }, [hasLevel, line.level]);
 
-  const renderedContent = useMemo(() => {
+  // Text is rendered as React children (never as raw HTML), so log content is always escaped.
+  const content = useMemo(() => {
     if (!highlightResult || highlightResult.segments.length === 0) {
-      return escapeHtml(line.rawLine);
+      return line.message;
     }
-
-    let html = '';
-    for (const segment of highlightResult.segments) {
-      if (segment.isMatch) {
-        let style = `color: ${segment.color.color}; font-weight: ${segment.color.fontWeight || 'normal'};`;
-        if (segment.color.backgroundColor) {
-          style += ` background-color: ${segment.color.backgroundColor};`;
-        }
-        html += `<span style="${style}">${escapeHtml(segment.text)}</span>`;
-      } else {
-        html += escapeHtml(segment.text);
-      }
-    }
-    return html;
-  }, [highlightResult, line.rawLine]);
+    return highlightResult.segments.map((segment, i) =>
+      segment.isMatch ? (
+        <span
+          key={i}
+          className="log-row-highlight"
+          style={{
+            color: segment.color.color,
+            fontWeight: segment.color.fontWeight || 'normal',
+            fontStyle: segment.color.fontStyle,
+            backgroundColor: segment.color.backgroundColor,
+          }}
+        >
+          {segment.text}
+        </span>
+      ) : (
+        <span key={i}>{segment.text}</span>
+      )
+    );
+  }, [highlightResult, line.message]);
 
   return (
-    <div className="log-row" data-line={index}>
-      <span className="log-row-number">{index + 1}</span>
-      {line.level && line.level !== 'UNKNOWN' && (
+    <div className="log-row" data-line={line.lineNumber}>
+      <span className="log-row-number">{line.lineNumber}</span>
+      {line.rawTimestamp && <span className="log-row-timestamp">{line.rawTimestamp}</span>}
+      {hasLevel && (
         <span className="log-row-level" style={{ color: levelColor }}>
           {line.level}
         </span>
       )}
-      <span
-        className="log-row-content"
-        dangerouslySetInnerHTML={{ __html: renderedContent }}
-      />
+      <span className="log-row-content">{content}</span>
     </div>
   );
 }

@@ -11,8 +11,19 @@ export default defineConfig({
   },
   test: {
     globals: true,
-    environment: 'node',
+    environment: 'jsdom',
+    setupFiles: ['./src/setupTests.ts'],
+    // Child processes are more reliable than worker threads in sandboxed environments
+    pool: 'forks',
+    poolOptions: {
+      forks: {
+        singleFork: true,
+      },
+    },
+    watch: false,
     testTimeout: 15000,
+    hookTimeout: 15000,
+    teardownTimeout: 5000,
     include: ['src/**/*.test.{ts,tsx}'],
     exclude: ['node_modules', 'dist', '.idea', '.git', '.cache'],
   },

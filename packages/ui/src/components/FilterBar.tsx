@@ -55,13 +55,13 @@ export function FilterBar({ onFilterChange, onHighlightPatternsChange }: FilterB
         <label>Level:</label>
         <select value={level} onChange={(e) => setLevel(e.target.value as LogLevel | '')}>
           <option value="">All</option>
-          <option value={LogLevel.DEBUG}>DEBUG</option>
-          <option value={LogLevel.INFO}>INFO</option>
-          <option value={LogLevel.WARN}>WARN</option>
-          <option value={LogLevel.WARNING}>WARNING</option>
-          <option value={LogLevel.ERROR}>ERROR</option>
-          <option value={LogLevel.FATAL}>FATAL</option>
-          <option value={LogLevel.TRACE}>TRACE</option>
+          <option value={LogLevel.DEBUG}>Debug</option>
+          <option value={LogLevel.INFO}>Info</option>
+          <option value={LogLevel.WARN}>Warn</option>
+          <option value={LogLevel.WARNING}>Warning</option>
+          <option value={LogLevel.ERROR}>Error</option>
+          <option value={LogLevel.FATAL}>Fatal</option>
+          <option value={LogLevel.TRACE}>Trace</option>
         </select>
       </div>
 

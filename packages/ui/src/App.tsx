@@ -1,14 +1,16 @@
-import React, { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { LogList } from './components/LogList';
 import { FilterBar } from './components/FilterBar';
 import { SavedQueriesPanel } from './components/SavedQueriesPanel';
 import { FollowModeToggle } from './components/FollowModeToggle';
-import { LogParser, LogLevel, PatternHighlighter, type ParsedLogLine, type HighlightPattern, type SavedQuery, type HighlightColor } from 'core';
+import { FileOpenDialog } from './components/FileOpenDialog';
+import { LogParser, LogLevel, type ParsedLogLine, type HighlightPattern, type SavedQuery } from 'core';
 
 interface AppState {
   lines: ParsedLogLine[];
   rawLines: string[];
   isLoading: boolean;
+  fileLoaded: boolean;
   fileName: string;
   filterLevel: LogLevel | '';
   filterTimeStart: string;
@@ -27,6 +29,7 @@ export default function App() {
     lines: [],
     rawLines: [],
     isLoading: false,
+    fileLoaded: false,
     fileName: '',
     filterLevel: '',
     filterTimeStart: '',
@@ -40,7 +43,6 @@ export default function App() {
     error: null,
   });
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const parserRef = useRef(new LogParser());
 
   const handleFileOpen = useCallback((file: File) => {
@@ -49,14 +51,19 @@ export default function App() {
     const reader = new FileReader();
     reader.onload = (e) => {
       try {
-        const content = e.target?.result as string;
-        const rawLines = content.split('\n').filter(Boolean);
+        const content = (e.target?.result as string) ?? '';
+        const rawLines = content.split(/\r?\n/);
+        // A trailing newline does not start a new line
+        if (rawLines.length > 0 && rawLines[rawLines.length - 1] === '') {
+          rawLines.pop();
+        }
         const parsed = rawLines.map((line, i) => parserRef.current.parseLine(line, i + 1));
         setState((prev) => ({
           ...prev,
           lines: parsed,
           rawLines,
           isLoading: false,
+          fileLoaded: true,
           fileName: file.name,
         }));
       } catch (err) {
@@ -154,23 +161,7 @@ export default function App() {
       </header>
 
       <div className="app-toolbar">
-        <button
-          className="btn btn-primary"
-          onClick={() => fileInputRef.current?.click()}
-          disabled={state.isLoading}
-        >
-          Open File
-        </button>
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept=".log,.txt,.csv,.json"
-          style={{ display: 'none' }}
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            if (file) handleFileOpen(file);
-          }}
-        />
+        <FileOpenDialog onFileOpen={handleFileOpen} disabled={state.isLoading} />
 
         <FollowModeToggle
           followMode={state.followMode}
@@ -196,6 +187,7 @@ export default function App() {
       <LogList
         lines={filteredLines}
         rawLines={state.rawLines}
+        fileLoaded={state.fileLoaded}
         highlightPatterns={highlightPatterns}
         followMode={state.followMode}
         followPaused={state.followPaused}

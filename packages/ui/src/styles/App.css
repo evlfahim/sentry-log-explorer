@@ -257,6 +257,24 @@ body {
   flex-shrink: 0;
 }
 
+.log-row-timestamp {
+  color: #8b949e;
+  padding-right: 12px;
+  flex-shrink: 0;
+}
+
+.log-list-no-lines {
+  padding: 16px;
+  color: #8b949e;
+  font-size: 13px;
+  text-align: center;
+}
+
+.file-open-dialog {
+  display: inline-flex;
+  align-items: center;
+}
+
 .log-row-level {
   min-width: 50px;
   font-weight: 600;
