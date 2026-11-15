@@ -1,12 +1,105 @@
 {
-  "name": "plugin",
+  "name": "sentry-log-explorer",
+  "publisher": "sentry-log-explorer",
+  "displayName": "Sentry Log Explorer",
+  "description": "A high-performance log explorer with filtering, highlighting, and follow mode.",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+  "engines": {
+    "vscode": "^1.85.0"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC"
+  "categories": [
+    "Other"
+  ],
+  "keywords": [
+    "log",
+    "explorer",
+    "filter",
+    "highlight"
+  ],
+  "activationEvents": [],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "sentry-log-explorer.open",
+        "title": "Open Log Explorer",
+        "icon": "$(search)"
+      }
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "command": "sentry-log-explorer.open",
+          "when": "editorHasSelection",
+          "group": "navigation"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "sentry-log-explorer.open",
+          "when": "view == sentry-log-explorer-panel",
+          "group": "navigation"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Sentry Log Explorer",
+      "properties": {
+        "sentryLogExplorer.followMode": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable follow mode (auto-scroll to latest lines)"
+        },
+        "sentryLogExplorer.highlightPatterns": {
+          "type": "array",
+          "default": [
+            {
+              "pattern": "ERROR|FATAL|CRITICAL",
+              "color": "#ff0000",
+              "fontWeight": "bold"
+            },
+            {
+              "pattern": "WARN|WARNING",
+              "color": "#ff8800",
+              "fontWeight": "bold"
+            },
+            {
+              "pattern": "INFO",
+              "color": "#00aa00"
+            },
+            {
+              "pattern": "DEBUG|TRACE",
+              "color": "#888888"
+            }
+          ],
+          "description": "Regex patterns for highlighting log lines"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./tsconfig.json && node scripts/copy-webview.mjs",
+    "watch": "tsc -watch -p ./tsconfig.json",
+    "pretest": "npm run compile",
+    "lint": "eslint src --ext ts",
+    "package": "npm run compile && python3 scripts/package-vsix.py",
+    "test": "node --experimental-vm-modules node_modules/vscode/bin/test"
+  },
+  "devDependencies": {
+    "@types/glob": "^8.1.0",
+    "@types/mocha": "^10.0.6",
+    "@types/vscode": "^1.85.0",
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
+    "@vscode/vsce": "^2.32.0",
+    "eslint": "^8.57.0",
+    "glob": "^10.3.10",
+    "mocha": "^10.3.0",
+    "typescript": "^5.5.4",
+    "vscode-test": "^1.6.1"
+  },
+  "files": [
+    "dist/**/*"
+  ]
 }
