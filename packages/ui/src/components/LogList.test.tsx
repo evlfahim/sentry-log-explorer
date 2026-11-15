@@ -204,5 +204,112 @@ describe('LogList', () => {
 
       expect(onFollowLinesUpdate).not.toHaveBeenCalled();
     });
+
+    describe('auto-scroll', () => {
+      it('scrolls to bottom when follow mode is on and not paused', () => {
+        const { container } = render(
+          <LogList {...defaultProps} followMode followPaused={false} />
+        );
+        const scroller = container.querySelector('.log-list-container') as HTMLElement;
+        expect(scroller).toHaveProperty('scrollHeight');
+        // The auto-scroll effect should set scrollTop to scrollHeight
+        // In happy-dom, scrollHeight is computed based on content
+        const scrollHeight = scroller.scrollHeight;
+        expect(scroller.scrollTop).toBe(scrollHeight);
+      });
+
+      it('does not auto-scroll when follow mode is off', () => {
+        const { container } = render(
+          <LogList {...defaultProps} followMode={false} />
+        );
+        const scroller = container.querySelector('.log-list-container') as HTMLElement;
+        // When follow mode is off, scrollTop should remain at 0 (default)
+        expect(scroller.scrollTop).toBe(0);
+      });
+
+      it('does not auto-scroll when follow mode is paused', () => {
+        const { container } = render(
+          <LogList {...defaultProps} followMode followPaused={true} />
+        );
+        const scroller = container.querySelector('.log-list-container') as HTMLElement;
+        // When follow mode is paused, scrollTop should remain at 0 (default)
+        expect(scroller.scrollTop).toBe(0);
+      });
+
+      it('auto-scrolls to bottom when new lines are added while following', () => {
+        const onFollowLinesUpdate = vi.fn();
+        const { rerender, container } = render(
+          <LogList
+            {...defaultProps}
+            followMode
+            followPaused={false}
+            onFollowLinesUpdate={onFollowLinesUpdate}
+          />
+        );
+        const scroller = container.querySelector('.log-list-container') as HTMLElement;
+        const initialScrollHeight = scroller.scrollHeight;
+
+        // Add new lines
+        const appended = [...mockLines, makeLine(4, LogLevel.INFO, '2024-01-01 10:00:03', 'New line')];
+        rerender(
+          <LogList
+            {...defaultProps}
+            lines={appended}
+            rawLines={appended.map((l) => l.rawLine)}
+            followMode
+            followPaused={false}
+            onFollowLinesUpdate={onFollowLinesUpdate}
+          />
+        );
+
+        // Should have scrolled to the new bottom
+        expect(scroller.scrollTop).toBe(scroller.scrollHeight);
+        expect(onFollowLinesUpdate).toHaveBeenCalledWith(1);
+      });
+
+      it('auto-scrolls on initial render when follow mode is on', () => {
+        const { container } = render(
+          <LogList
+            {...defaultProps}
+            followMode
+            followPaused={false}
+          />
+        );
+        const scroller = container.querySelector('.log-list-container') as HTMLElement;
+        // Should have scrolled to bottom on initial render
+        expect(scroller.scrollTop).toBe(scroller.scrollHeight);
+      });
+
+      it('resets scroll to top when a new file is loaded', () => {
+        const { container, rerender } = render(
+          <LogList
+            {...defaultProps}
+            followMode
+            followPaused={false}
+          />
+        );
+        const scroller = container.querySelector('.log-list-container') as HTMLElement;
+
+        // Simulate scrolling down by changing rawLines (which triggers the reset effect)
+        const newRawLines = ['new file line 1', 'new file line 2'];
+        const newLines = [
+          makeLine(1, LogLevel.INFO, '2024-01-01 10:00:00', 'new file line 1'),
+          makeLine(2, LogLevel.INFO, '2024-01-01 10:00:01', 'new file line 2'),
+        ];
+
+        rerender(
+          <LogList
+            {...defaultProps}
+            lines={newLines}
+            rawLines={newRawLines}
+            followMode
+            followPaused={false}
+          />
+        );
+
+        // Should have reset to top
+        expect(scroller.scrollTop).toBe(0);
+      });
+    });
   });
 });
