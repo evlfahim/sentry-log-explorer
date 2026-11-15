@@ -5,4 +5,14 @@ module.exports = {
   roots: ['<rootDir>/src'],
   testMatch: ['**/*.test.ts'],
   moduleFileExtensions: ['ts', 'js', 'json'],
+  forceExit: true,
+  detectOpenHandles: false,
+  transform: {
+    '^.+\\.tsx?$': [
+      'ts-jest',
+      {
+        isolatedModules: true,
+      },
+    ],
+  },
 };
