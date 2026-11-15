@@ -1,7 +1,35 @@
+import { JSDOM } from 'jsdom';
 import { vi } from 'vitest';
 
+// Create a minimal DOM environment manually
+const dom = new JSDOM('<!DOCTYPE html><html><body></body></html>', {
+  url: 'http://localhost',
+  pretendToBeVisual: true,
+  resources: 'usable',
+});
+
+const { window } = dom;
+
+// Attach DOM globals
+global.document = window.document;
+global.window = window;
+global.self = window;
+global.navigator = {
+  userAgent: 'node.js',
+};
+global.requestAnimationFrame = (callback: () => void) => setTimeout(callback, 0);
+global.cancelAnimationFrame = (id: number) => clearTimeout(id);
+global.matchMedia = () => ({
+  matches: false,
+  media: '',
+  addListener: () => {},
+  removeListener: () => {},
+  addEventListener: () => {},
+  removeEventListener: () => {},
+  dispatchEvent: () => false,
+});
+
 // Mock the core module before any test imports it
-// Use the full resolved path to match the alias in vitest.config.ts
 vi.mock('/work/sentry-log-explorer/packages/core/src', () => {
   const LogLevel = {
     TRACE: 'TRACE',
