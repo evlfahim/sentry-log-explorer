@@ -42,5 +42,5 @@ Core library exports a clean API; VS Code extension consumes core via Webview, s
 - [x] 14. Add saved queries panel with load and export actions. `cd packages/ui && npm run test -- --grep "queries-ui"`
 - [x] 15. Wire follow mode toggle and auto-scroll behavior. `cd packages/ui && npm run test -- --grep "follow-ui"`
 - [x] 16. Wrap UI in Tauri for standalone desktop application. `cd packages/desktop && npm run tauri dev && pgrep -f tauri`
-- [ ] 17. Configure VS Code extension manifest and Webview bridge. `cd packages/plugin && npm run package && ls -l *.vsix`
+- [x] 17. Configure VS Code extension manifest and Webview bridge. `cd packages/plugin && npm run package && ls -l *.vsix`
 - [ ] 18. Write README with run instructions and plugin integration guide. `cat README.md | grep -q "VS Code" && cat README.md | grep -q "npm run"`
