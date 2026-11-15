@@ -19,10 +19,11 @@ export default defineConfig({
     teardownTimeout: 5000,
     include: ['src/**/*.test.{ts,tsx}'],
     exclude: ['node_modules', 'dist', '.idea', '.git', '.cache'],
-    pool: 'threads',
+    // Child processes instead of worker threads: worker threads + jsdom can hang on Node 22.
+    pool: 'forks',
     poolOptions: {
-      threads: {
-        singleThread: true,
+      forks: {
+        singleFork: true,
       },
     },
   },

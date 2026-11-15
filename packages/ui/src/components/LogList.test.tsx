@@ -1,19 +1,41 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { LogList } from './LogList';
 import type { ParsedLogLine } from 'core';
 
+// The `LogLevel` exported from 'core' is the highlighter's enum, not the parser enum used by
+// ParsedLogLine, so build levels from their (identical) string values instead.
+const LogLevel = {
+  DEBUG: 'DEBUG',
+  INFO: 'INFO',
+  WARN: 'WARN',
+  ERROR: 'ERROR',
+} as unknown as Record<'DEBUG' | 'INFO' | 'WARN' | 'ERROR', ParsedLogLine['level']>;
+
+function makeLine(
+  lineNumber: number,
+  level: ParsedLogLine['level'],
+  rawTimestamp: string,
+  message: string
+): ParsedLogLine {
+  return {
+    lineNumber,
+    rawLine: `${rawTimestamp} ${level} ${message}`,
+    timestamp: new Date(rawTimestamp.replace(' ', 'T')),
+    level,
+    message,
+    rawTimestamp,
+    rawLevel: level,
+  };
+}
+
 const mockLines: ParsedLogLine[] = [
-  { lineNumber: 1, level: 'INFO', rawTimestamp: '2024-01-01 10:00:00', message: 'Application started' },
-  { lineNumber: 2, level: 'WARN', rawTimestamp: '2024-01-01 10:00:01', message: 'Low memory warning' },
-  { lineNumber: 3, level: 'ERROR', rawTimestamp: '2024-01-01 10:00:02', message: 'Connection failed' },
+  makeLine(1, LogLevel.INFO, '2024-01-01 10:00:00', 'Application started'),
+  makeLine(2, LogLevel.WARN, '2024-01-01 10:00:01', 'Low memory warning'),
+  makeLine(3, LogLevel.ERROR, '2024-01-01 10:00:02', 'Connection failed'),
 ];
 
-const mockRawLines: string[] = [
-  '2024-01-01 10:00:00 INFO Application started',
-  '2024-01-01 10:00:01 WARN Low memory warning',
-  '2024-01-01 10:00:02 ERROR Connection failed',
-];
+const mockRawLines: string[] = mockLines.map((l) => l.rawLine);
 
 const defaultProps = {
   lines: mockLines,
@@ -25,6 +47,12 @@ const defaultProps = {
   onFollowLinesUpdate: vi.fn(),
 };
 
+function makeManyLines(count: number): ParsedLogLine[] {
+  return Array.from({ length: count }, (_, i) =>
+    makeLine(i + 1, LogLevel.INFO, '2024-01-01 10:00:00', `Message ${i + 1}`)
+  );
+}
+
 describe('LogList', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -33,7 +61,6 @@ describe('LogList', () => {
   it('renders a list of LogRow components when file is loaded', () => {
     const { container } = render(<LogList {...defaultProps} />);
 
-    // Each row should have a data-line attribute with the line number
     const rows = container.querySelectorAll('.log-row');
     expect(rows).toHaveLength(3);
     expect(rows[0]).toHaveAttribute('data-line', '1');
@@ -41,15 +68,34 @@ describe('LogList', () => {
     expect(rows[2]).toHaveAttribute('data-line', '3');
   });
 
-  it('renders the correct number of rows matching the lines array length', () => {
+  it('renders each LogRow with number, timestamp, level and message', () => {
     const { container } = render(<LogList {...defaultProps} />);
+    const firstRow = container.querySelector('.log-row')!;
+
+    expect(firstRow.querySelector('.log-row-number')).toHaveTextContent('1');
+    expect(firstRow.querySelector('.log-row-timestamp')).toHaveTextContent('2024-01-01 10:00:00');
+    expect(firstRow.querySelector('.log-row-level')).toHaveTextContent('INFO');
+    expect(firstRow.querySelector('.log-row-content')).toHaveTextContent('Application started');
+  });
+
+  it('renders LogRow components with line numbers taken from ParsedLogLine', () => {
+    const customLines = [
+      makeLine(100, LogLevel.DEBUG, '2024-01-01 12:00:00', 'Debug message'),
+      makeLine(200, LogLevel.INFO, '2024-01-01 12:00:01', 'Info message'),
+    ];
+    const { container } = render(
+      <LogList {...defaultProps} lines={customLines} rawLines={customLines.map((l) => l.rawLine)} />
+    );
     const rows = container.querySelectorAll('.log-row');
-    expect(rows).toHaveLength(mockLines.length);
+    expect(rows[0]).toHaveAttribute('data-line', '100');
+    expect(rows[1]).toHaveAttribute('data-line', '200');
   });
 
   it('shows "No log file loaded" message when fileLoaded is false', () => {
-    render(<LogList {...defaultProps} fileLoaded={false} />);
+    const { container } = render(<LogList {...defaultProps} fileLoaded={false} />);
     expect(screen.getByText(/no log file loaded/i)).toBeInTheDocument();
+    expect(container.querySelector('.log-list-empty')).toBeInTheDocument();
+    expect(container.querySelectorAll('.log-row')).toHaveLength(0);
   });
 
   it('renders the footer with line counts', () => {
@@ -58,10 +104,7 @@ describe('LogList', () => {
   });
 
   it('renders footer with different counts for filtered results', () => {
-    const filteredLines: ParsedLogLine[] = [
-      { lineNumber: 1, level: 'INFO', rawTimestamp: '2024-01-01 10:00:00', message: 'Application started' },
-    ];
-    render(<LogList {...defaultProps} lines={filteredLines} />);
+    render(<LogList {...defaultProps} lines={[mockLines[0]]} />);
     expect(screen.getByText(/showing 1 of 3 lines/i)).toBeInTheDocument();
   });
 
@@ -75,61 +118,91 @@ describe('LogList', () => {
     expect(screen.getByText(/file is empty/i)).toBeInTheDocument();
   });
 
-  it('renders the log-list-container element', () => {
+  it('does not render the no-lines message when lines has content', () => {
     const { container } = render(<LogList {...defaultProps} />);
-    const logListContainer = container.querySelector('.log-list-container');
-    expect(logListContainer).toBeInTheDocument();
+    expect(container.querySelector('.log-list-no-lines')).toBeNull();
   });
 
-  it('renders the log-list-viewport element', () => {
-    const { container } = render(<LogList {...defaultProps} />);
-    const viewport = container.querySelector('.log-list-viewport');
-    expect(viewport).toBeInTheDocument();
+  describe('virtual scrolling', () => {
+    const manyLines = makeManyLines(1000);
+    const manyRawLines = manyLines.map((l) => l.rawLine);
+
+    it('sizes the viewport to the full list height (24px per row)', () => {
+      const { container } = render(<LogList {...defaultProps} lines={manyLines} rawLines={manyRawLines} />);
+      const viewport = container.querySelector('.log-list-viewport') as HTMLElement;
+      expect(viewport.style.height).toBe('24000px');
+    });
+
+    it('only renders the visible window of rows, not all of them', () => {
+      const { container } = render(<LogList {...defaultProps} lines={manyLines} rawLines={manyRawLines} />);
+      const rows = container.querySelectorAll('.log-row');
+      // 600px default viewport / 24px rows = 25 rows, plus a 20-row buffer below.
+      expect(rows).toHaveLength(45);
+      expect(rows[0]).toHaveAttribute('data-line', '1');
+      expect(screen.getByText(/showing 1000 of 1000 lines/i)).toBeInTheDocument();
+    });
+
+    it('renders a different window of rows after scrolling', () => {
+      const { container } = render(<LogList {...defaultProps} lines={manyLines} rawLines={manyRawLines} />);
+      const scroller = container.querySelector('.log-list-container') as HTMLElement;
+
+      // jsdom does not do layout, so set scrollTop directly before firing the scroll event.
+      Object.defineProperty(scroller, 'scrollTop', { value: 2400, writable: true, configurable: true });
+      fireEvent.scroll(scroller);
+
+      const rows = container.querySelectorAll('.log-row');
+      // scrollTop 2400 -> first visible index 100, minus 20 buffer = index 80 (line 81);
+      // last index = ceil((2400 + 600) / 24) + 20 = 145 (exclusive).
+      expect(rows).toHaveLength(65);
+      expect(rows[0]).toHaveAttribute('data-line', '81');
+      expect(rows[rows.length - 1]).toHaveAttribute('data-line', '145');
+
+      const offsetWrapper = rows[0].parentElement as HTMLElement;
+      expect(offsetWrapper.style.transform).toBe('translateY(1920px)');
+    });
   });
 
-  it('renders the log-list-empty element when file is not loaded', () => {
-    const { container } = render(<LogList {...defaultProps} fileLoaded={false} />);
-    const emptyDiv = container.querySelector('.log-list-empty');
-    expect(emptyDiv).toBeInTheDocument();
-  });
+  describe('follow mode', () => {
+    it('reports newly appended lines while following', () => {
+      const onFollowLinesUpdate = vi.fn();
+      const { rerender } = render(
+        <LogList {...defaultProps} followMode onFollowLinesUpdate={onFollowLinesUpdate} />
+      );
+      onFollowLinesUpdate.mockClear();
 
-  it('renders the log-list-footer element', () => {
-    const { container } = render(<LogList {...defaultProps} />);
-    const footer = container.querySelector('.log-list-footer');
-    expect(footer).toBeInTheDocument();
-  });
+      const appended = [...mockLines, makeLine(4, LogLevel.INFO, '2024-01-01 10:00:03', 'New line')];
+      rerender(
+        <LogList
+          {...defaultProps}
+          lines={appended}
+          rawLines={appended.map((l) => l.rawLine)}
+          followMode
+          onFollowLinesUpdate={onFollowLinesUpdate}
+        />
+      );
 
-  it('renders the log-list-no-lines element when lines is empty but rawLines has content', () => {
-    const { container } = render(<LogList {...defaultProps} lines={[]} />);
-    const noLinesDiv = container.querySelector('.log-list-no-lines');
-    expect(noLinesDiv).toBeInTheDocument();
-  });
+      expect(onFollowLinesUpdate).toHaveBeenCalledWith(1);
+    });
 
-  it('does not render log-list-no-lines when lines has content', () => {
-    const { container } = render(<LogList {...defaultProps} />);
-    const noLinesDiv = container.querySelector('.log-list-no-lines');
-    expect(noLinesDiv).toBeNull();
-  });
+    it('does not report new lines while follow mode is paused', () => {
+      const onFollowLinesUpdate = vi.fn();
+      const { rerender } = render(
+        <LogList {...defaultProps} followMode followPaused onFollowLinesUpdate={onFollowLinesUpdate} />
+      );
 
-  it('renders LogRow components with correct line numbers from ParsedLogLine', () => {
-    const customLines: ParsedLogLine[] = [
-      { lineNumber: 100, level: 'DEBUG', rawTimestamp: '2024-01-01 12:00:00', message: 'Debug message' },
-      { lineNumber: 200, level: 'INFO', rawTimestamp: '2024-01-01 12:00:01', message: 'Info message' },
-    ];
-    const customRawLines = ['2024-01-01 12:00:00 DEBUG Debug message', '2024-01-01 12:00:01 INFO Info message'];
-    const { container } = render(<LogList {...defaultProps} lines={customLines} rawLines={customRawLines} />);
-    const rows = container.querySelectorAll('.log-row');
-    expect(rows[0]).toHaveAttribute('data-line', '100');
-    expect(rows[1]).toHaveAttribute('data-line', '200');
-  });
+      const appended = [...mockLines, makeLine(4, LogLevel.INFO, '2024-01-01 10:00:03', 'New line')];
+      rerender(
+        <LogList
+          {...defaultProps}
+          lines={appended}
+          rawLines={appended.map((l) => l.rawLine)}
+          followMode
+          followPaused
+          onFollowLinesUpdate={onFollowLinesUpdate}
+        />
+      );
 
-  it('renders LogRow components with level, timestamp, and content elements', () => {
-    const { container } = render(<LogList {...defaultProps} />);
-    const firstRow = container.querySelector('.log-row')!;
-
-    expect(firstRow.querySelector('.log-row-number')).toBeInTheDocument();
-    expect(firstRow.querySelector('.log-row-timestamp')).toBeInTheDocument();
-    expect(firstRow.querySelector('.log-row-level')).toBeInTheDocument();
-    expect(firstRow.querySelector('.log-row-content')).toBeInTheDocument();
+      expect(onFollowLinesUpdate).not.toHaveBeenCalled();
+    });
   });
 });
