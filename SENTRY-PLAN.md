@@ -33,7 +33,7 @@ Core library exports a clean API; VS Code extension consumes core via Webview, s
 - [x] 5. Implement pattern highlighter with configurable regex groups and colors. `cd packages/core && npm test -- --grep "highlight"`
 - [x] 6. Develop follow mode logic with tail-fallback and pause state. `cd packages/core && npm test -- --grep "follow"`
 - [x] 7. Create saved queries manager with JSON persistence and history. `cd packages/core && npm test -- --grep "queries"`
-- [ ] 8. Build React UI shell with virtual scrolling and core integration. `cd packages/ui && npm run dev && curl -s localhost:5173 | grep -q "div"`
+- [x] 8. Build React UI shell with virtual scrolling and core integration. `cd packages/ui && npm run dev && curl -s localhost:5173 | grep -q "div"`
 - [ ] 9. Add file open dialog and log list rendering. `cd packages/ui && npm run test -- --grep "open-file"`
 - [ ] 10. Implement filter bar with level toggles and time picker. `cd packages/ui && npm run test -- --grep "filters"`
 - [ ] 11. Integrate pattern highlighter into log rows. `cd packages/ui && npm run test -- --grep "highlight-ui"`
