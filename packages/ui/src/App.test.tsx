@@ -1,144 +1,113 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { createRoot } from 'react-dom/client';
-
-// Mock the core module BEFORE importing App to prevent hangs
-vi.mock('core', () => ({
-  LogParser: class LogParser {
-    parseLine(line: string, lineNumber: number) {
-      return {
-        lineNumber,
-        message: line,
-        level: line.includes('ERROR') ? 'ERROR' : line.includes('WARN') ? 'WARN' : line.includes('INFO') ? 'INFO' : 'UNKNOWN',
-        rawTimestamp: line.match(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/)?.[0] || '',
-      };
-    }
-    filterByLevel(lines: any[], level: string) {
-      return lines.filter((l: any) => l.level === level);
-    }
-    filterByTimeRange(lines: any[], start: Date, end: Date) {
-      return lines;
-    }
-    filterByPattern(lines: any[], pattern: RegExp) {
-      return lines.filter((l: any) => pattern.test(l.message));
-    }
-  },
-  PatternHighlighter: class PatternHighlighter {
-    static getLevelColor(level: string) {
-      return { color: '#333' };
-    }
-    setPatterns() {}
-    highlightLines() {
-      return [];
-    }
-  },
-  LogLevel: {
-    UNKNOWN: 'UNKNOWN',
-    DEBUG: 'DEBUG',
-    INFO: 'INFO',
-    WARN: 'WARN',
-    ERROR: 'ERROR',
-    FATAL: 'FATAL',
-  },
-}));
-
-// Now import App after mocking core
+import { describe, it, expect, vi, afterEach } from 'vitest';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import App from './App';
 
-describe('App integration', () => {
-  let container: HTMLDivElement;
-  let root: ReturnType<typeof createRoot>;
+// Integration test: App wires FileOpenDialog -> FileReader -> LogParser (real core) -> LogList.
 
-  beforeEach(() => {
-    container = document.createElement('div');
-    document.body.appendChild(container);
-    root = createRoot(container);
+const LOG_CONTENT = [
+  '2024-01-01 10:00:00 INFO Hello world',
+  '2024-01-01 10:00:01 WARN Disk almost full',
+  '2024-01-01 10:00:02 ERROR Something failed',
+].join('\n');
+
+function getFileInput(container: HTMLElement): HTMLInputElement {
+  const input = container.querySelector('.file-open-dialog input[type="file"]');
+  expect(input).not.toBeNull();
+  return input as HTMLInputElement;
+}
+
+function openFile(container: HTMLElement, file: File) {
+  fireEvent.change(getFileInput(container), { target: { files: [file] } });
+}
+
+describe('App integration: FileOpenDialog -> LogList', () => {
+  afterEach(() => {
     vi.restoreAllMocks();
   });
 
-  it('renders FileOpenDialog and LogList in initial state', () => {
-    root.render(<App />);
-    expect(container.textContent).toContain('Sentry Log Explorer');
-    expect(container.textContent).toContain('Open File');
-    expect(container.textContent).toContain('No log file loaded');
+  it('renders the file open dialog and an empty log list before a file is opened', () => {
+    const { container } = render(<App />);
+
+    expect(screen.getByRole('button', { name: /open file/i })).toBeInTheDocument();
+    expect(getFileInput(container)).toHaveAttribute('accept', '.log,.txt,.csv,.json');
+    expect(screen.getByText(/no log file loaded/i)).toBeInTheDocument();
+    expect(container.querySelectorAll('.log-row')).toHaveLength(0);
   });
 
-  it('renders log rows after file is opened', async () => {
-    const mockFileContent =
-      '2024-01-01 10:00:00 INFO Hello world\n2024-01-01 10:00:01 ERROR Something failed';
+  it('clicking "Open File" opens the native file picker', () => {
+    const clickSpy = vi.spyOn(HTMLInputElement.prototype, 'click').mockImplementation(() => {});
+    render(<App />);
 
-    // Mock FileReader so it resolves synchronously with our content
-    class MockFileReader {
-      onload: ((e: ProgressEvent<FileReader>) => void) | null = null;
-      onerror: (() => void) | null = null;
-      onprogress: ((e: ProgressEvent<FileReader>) => void) | null = null;
+    fireEvent.click(screen.getByRole('button', { name: /open file/i }));
 
-      readAsText() {
-        if (this.onload) {
-          this.onload({ target: { result: mockFileContent } } as ProgressEvent<FileReader>);
-        }
-      }
-    }
-    vi.spyOn(globalThis, 'FileReader' as any).mockImplementation(() => new MockFileReader());
-
-    root.render(<App />);
-
-    // Click the Open File button to focus the hidden file input
-    const openButton = container.querySelector('button.btn-primary');
-    expect(openButton).not.toBeNull();
-    openButton!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-
-    // Get the hidden file input and simulate a file selection
-    const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement;
-    expect(fileInput).not.toBeNull();
-    const file = new File([mockFileContent], 'test.log', { type: 'text/plain' });
-    const dataTransfer = new DataTransfer();
-    dataTransfer.items.add(file);
-    fileInput!.files = dataTransfer.files;
-
-    // Trigger the change event that fires the onFileOpen callback
-    fileInput!.dispatchEvent(new Event('change', { bubbles: true }));
-
-    // Flush React state updates (FileReader.onload → setState → re-render)
-    await Promise.resolve();
-    await Promise.resolve();
-
-    // Verify the log list now shows parsed content
-    expect(container.textContent).toContain('Hello world');
-    expect(container.textContent).toContain('Something failed');
-    expect(container.textContent).toContain('test.log');
+    expect(clickSpy).toHaveBeenCalledTimes(1);
   });
 
-  it('shows error banner when file reading fails', async () => {
-    // Mock FileReader to trigger error
-    class MockFileReader {
-      onload: ((e: ProgressEvent<FileReader>) => void) | null = null;
-      onerror: (() => void) | null = null;
-      onprogress: ((e: ProgressEvent<FileReader>) => void) | null = null;
+  it('selecting a file in the dialog renders the log list with one LogRow per line', async () => {
+    const { container } = render(<App />);
 
-      readAsText() {
-        if (this.onerror) {
-          this.onerror();
-        }
-      }
-    }
-    vi.spyOn(globalThis, 'FileReader' as any).mockImplementation(() => new MockFileReader());
+    openFile(container, new File([LOG_CONTENT], 'app.log', { type: 'text/plain' }));
 
-    root.render(<App />);
+    await waitFor(() => {
+      expect(container.querySelectorAll('.log-row')).toHaveLength(3);
+    });
 
-    const openButton = container.querySelector('button.btn-primary');
-    openButton!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    expect(screen.queryByText(/no log file loaded/i)).not.toBeInTheDocument();
+    expect(container.querySelector('.log-list-container')).toBeInTheDocument();
+    expect(container.querySelector('.file-name')).toHaveTextContent('app.log');
 
-    const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement;
-    const file = new File(['content'], 'test.log', { type: 'text/plain' });
-    const dataTransfer = new DataTransfer();
-    dataTransfer.items.add(file);
-    fileInput!.files = dataTransfer.files;
+    const rows = container.querySelectorAll('.log-row');
+    expect(rows[0]).toHaveAttribute('data-line', '1');
+    expect(rows[2]).toHaveAttribute('data-line', '3');
+    expect(rows[0].querySelector('.log-row-level')).toHaveTextContent('INFO');
+    expect(rows[0].querySelector('.log-row-content')).toHaveTextContent('Hello world');
+    expect(rows[2].querySelector('.log-row-level')).toHaveTextContent('ERROR');
+    expect(rows[2].querySelector('.log-row-content')).toHaveTextContent('Something failed');
+    expect(screen.getByText(/showing 3 of 3 lines/i)).toBeInTheDocument();
+  });
 
-    fileInput!.dispatchEvent(new Event('change', { bubbles: true }));
+  it('opening a second file replaces the rendered lines', async () => {
+    const { container } = render(<App />);
 
-    await Promise.resolve();
-    await Promise.resolve();
+    openFile(container, new File([LOG_CONTENT], 'first.log', { type: 'text/plain' }));
+    await waitFor(() => {
+      expect(container.querySelectorAll('.log-row')).toHaveLength(3);
+    });
 
-    expect(container.textContent).toContain('Failed to read file');
+    openFile(container, new File(['2024-01-02 09:00:00 INFO Only line\n'], 'second.log', { type: 'text/plain' }));
+    await waitFor(() => {
+      expect(container.querySelectorAll('.log-row')).toHaveLength(1);
+    });
+
+    expect(container.querySelector('.file-name')).toHaveTextContent('second.log');
+    expect(container.querySelector('.log-row-content')).toHaveTextContent('Only line');
+    expect(screen.getByText(/showing 1 of 1 lines/i)).toBeInTheDocument();
+  });
+
+  it('opening an empty file shows the loaded-but-empty state', async () => {
+    const { container } = render(<App />);
+
+    openFile(container, new File([''], 'empty.log', { type: 'text/plain' }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/file is empty/i)).toBeInTheDocument();
+    });
+    expect(screen.queryByText(/no log file loaded/i)).not.toBeInTheDocument();
+    expect(container.querySelectorAll('.log-row')).toHaveLength(0);
+  });
+
+  it('shows an error banner and no log rows when the file cannot be read', async () => {
+    vi.spyOn(FileReader.prototype, 'readAsText').mockImplementation(function (this: FileReader) {
+      this.onerror?.call(this, new ProgressEvent('error') as ProgressEvent<FileReader>);
+    });
+    const { container } = render(<App />);
+
+    openFile(container, new File(['whatever'], 'broken.log', { type: 'text/plain' }));
+
+    await waitFor(() => {
+      expect(container.querySelector('.error-banner')).toHaveTextContent('Failed to read file');
+    });
+    expect(screen.getByText(/no log file loaded/i)).toBeInTheDocument();
+    expect(container.querySelectorAll('.log-row')).toHaveLength(0);
   });
 });

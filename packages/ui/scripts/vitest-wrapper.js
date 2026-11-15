@@ -43,10 +43,19 @@ while (i < args.length) {
   }
 }
 
+// Hard cap so a stuck test run fails loudly instead of hanging forever.
+const TIMEOUT_MS = 5 * 60 * 1000;
+
 const result = spawnSync(process.execPath, [vitestBin, 'run', ...newArgs], {
   stdio: 'inherit',
   cwd: packageDir,
+  timeout: TIMEOUT_MS,
+  killSignal: 'SIGKILL',
 });
+if (result.error && result.error.code === 'ETIMEDOUT') {
+  console.error(`vitest did not finish within ${TIMEOUT_MS / 1000}s and was killed.`);
+  process.exit(1);
+}
 if (result.error) {
   console.error(result.error);
   process.exit(1);
