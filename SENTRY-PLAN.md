@@ -31,7 +31,7 @@ Core library exports a clean API; VS Code extension consumes core via Webview, s
 - [x] 3. Add log parser to extract levels and timestamps from raw lines. `cd packages/core && npm test -- --grep "parser"`
 - [x] 4. Build filter engine supporting level, time range, and regex matching. `cd packages/core && npm test -- --grep "filter"`
 - [x] 5. Implement pattern highlighter with configurable regex groups and colors. `cd packages/core && npm test -- --grep "highlight"`
-- [ ] 6. Develop follow mode logic with tail-fallback and pause state. `cd packages/core && npm test -- --grep "follow"`
+- [x] 6. Develop follow mode logic with tail-fallback and pause state. `cd packages/core && npm test -- --grep "follow"`
 - [ ] 7. Create saved queries manager with JSON persistence and history. `cd packages/core && npm test -- --grep "queries"`
 - [ ] 8. Build React UI shell with virtual scrolling and core integration. `cd packages/ui && npm run dev && curl -s localhost:5173 | grep -q "div"`
 - [ ] 9. Add file open dialog and log list rendering. `cd packages/ui && npm run test -- --grep "open-file"`

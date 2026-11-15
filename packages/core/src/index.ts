@@ -31,3 +31,12 @@ export type {
 } from './parser';
 
 export { LogLevel } from './highlighter';
+
+export {
+  FollowMode,
+} from './follow';
+export type {
+  FollowState,
+  FollowCallbacks,
+  FollowOptions,
+} from './follow';
