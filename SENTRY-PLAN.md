@@ -39,7 +39,7 @@ Core library exports a clean API; VS Code extension consumes core via Webview, s
 - [x] 11. Integrate FileOpenDialog and LogList into the main App component in packages/ui/src/App.tsx and add an integration test that verifies the file open dialog triggers the log list rendering.
 - [x] 12. Implement filter bar with level toggles and time picker. `cd packages/ui && npm run test -- --grep "filters"`
 - [x] 13. Integrate pattern highlighter into log rows. `cd packages/ui && npm run test -- --grep "highlight-ui"`
-- [ ] 14. Add saved queries panel with load and export actions. `cd packages/ui && npm run test -- --grep "queries-ui"`
+- [x] 14. Add saved queries panel with load and export actions. `cd packages/ui && npm run test -- --grep "queries-ui"`
 - [ ] 15. Wire follow mode toggle and auto-scroll behavior. `cd packages/ui && npm run test -- --grep "follow-ui"`
 - [ ] 16. Wrap UI in Tauri for standalone desktop application. `cd packages/desktop && npm run tauri dev && pgrep -f tauri`
 - [ ] 17. Configure VS Code extension manifest and Webview bridge. `cd packages/plugin && npm run package && ls -l *.vsix`
