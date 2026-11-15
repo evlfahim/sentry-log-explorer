@@ -34,7 +34,7 @@ Core library exports a clean API; VS Code extension consumes core via Webview, s
 - [x] 6. Develop follow mode logic with tail-fallback and pause state. `cd packages/core && npm test -- --grep "follow"`
 - [x] 7. Create saved queries manager with JSON persistence and history. `cd packages/core && npm test -- --grep "queries"`
 - [x] 8. Build React UI shell with virtual scrolling and core integration. `cd packages/ui && npm run dev && curl -s localhost:5173 | grep -q "div"`
-- [ ] 9. Implement the FileOpenDialog component in packages/ui/src/components/FileOpenDialog.tsx and add a basic unit test that verifies the file input element renders correctly.
+- [x] 9. Implement the FileOpenDialog component in packages/ui/src/components/FileOpenDialog.tsx and add a basic unit test that verifies the file input element renders correctly.
 - [ ] 10. Implement the LogList component with virtual scrolling support in packages/ui/src/components/LogList.tsx and add a unit test that verifies it renders a list of LogRow components.
 - [ ] 11. Integrate FileOpenDialog and LogList into the main App component in packages/ui/src/App.tsx and add an integration test that verifies the file open dialog triggers the log list rendering.
 - [ ] 12. Implement filter bar with level toggles and time picker. `cd packages/ui && npm run test -- --grep "filters"`
